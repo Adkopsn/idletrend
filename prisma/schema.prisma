@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Item {
+  id         Int            @id @default(autoincrement())
+  hashName   String         @unique
+  name       String
+  type       String?
+  classId    String?
+  iconUrl    String?
+  nameColor  String?
+  tradable   Boolean?
+  records    MarketRecord[]
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+model Snapshot {
+  id         Int            @id @default(autoincrement())
+  fetchedAt  DateTime
+  records    MarketRecord[]
+  createdAt  DateTime       @default(now())
+}
+
+model MarketRecord {
+  id          Int       @id @default(autoincrement())
+  itemId      Int
+  snapshotId  Int
+  priceCents  Int
+  priceText   String?
+  salePriceText String?
+  listings    Int
+
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, snapshotId])
+}

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Next.js
+.next/
+**/.next/
+out/
+
+# Prisma generated files
+/generated/prisma/
+
+# Local market data
+poc/snapshots/
+poc/steam-items-full.json
+poc/steam-items-progress.json
+poc/steam-items-test.json
+poc/comparison-result.json
+
+# Logs
+*.log
+
+# Operating system
+.DS_Store
+Thumbs.db
