@@ -29,8 +29,7 @@ type Pagination = {
   totalItems: number;
   totalPages: number;
 };
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = "https://idletrend-api.onrender.com";
 export default function Home() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);

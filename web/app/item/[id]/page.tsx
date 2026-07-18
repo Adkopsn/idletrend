@@ -85,8 +85,7 @@ function ChartTooltip({
     </div>
   );
 }
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = "https://idletrend-api.onrender.com";
 export default function ItemDetailPage() {
   const params = useParams();
   const id = params.id as string;
