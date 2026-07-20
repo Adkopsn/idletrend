@@ -2,7 +2,10 @@ name: Update IdleTrend Market Data
 
 on:
   workflow_dispatch:
-
+  schedule:
+    - cron: "0 0,12 * * *"
+      timezone: "Europe/Istanbul"
+      
 permissions:
   contents: read
 
