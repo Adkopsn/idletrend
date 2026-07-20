@@ -34,5 +34,8 @@ jobs:
       - name: Create snapshot directory
         run: mkdir -p poc/snapshots
 
-      - name: Fetch and import market data
-        run: node poc/run-analysis.mjs
+      - name: Fetch market data
+        run: node poc/steam-market-fetcher.mjs
+
+      - name: Import market data
+        run: node poc/import-to-db.mjs
