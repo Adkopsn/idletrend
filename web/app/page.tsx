@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  translations,
+  type Language,
+} from "./translations";
 
 type Item = {
   id: number;
@@ -29,24 +33,69 @@ type Pagination = {
   totalItems: number;
   totalPages: number;
 };
-const API_URL = "https://idletrend-api.onrender.com";
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://idletrend-api.onrender.com";
+
 export default function Home() {
+  const [language, setLanguage] =
+    useState<Language>("tr");
+
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] =
+    useState("");
   const [sort, setSort] = useState("name");
   const [page, setPage] = useState(1);
 
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: 25,
-    totalItems: 0,
-    totalPages: 1,
-  });
+  const [pagination, setPagination] =
+    useState<Pagination>({
+      page: 1,
+      limit: 25,
+      totalItems: 0,
+      totalPages: 1,
+    });
 
   const [gainers, setGainers] = useState<Mover[]>([]);
   const [losers, setLosers] = useState<Mover[]>([]);
+
+  const text = translations[language];
+
+  useEffect(() => {
+    const savedLanguage =
+      window.localStorage.getItem("idletrend-language");
+
+    if (
+      savedLanguage === "tr" ||
+      savedLanguage === "en"
+    ) {
+      setLanguage(savedLanguage);
+      document.documentElement.lang = savedLanguage;
+      return;
+    }
+
+    const browserLanguage =
+      window.navigator.language.toLowerCase();
+
+    const initialLanguage: Language =
+      browserLanguage.startsWith("tr") ? "tr" : "en";
+
+    setLanguage(initialLanguage);
+    document.documentElement.lang = initialLanguage;
+  }, []);
+
+  function changeLanguage(newLanguage: Language) {
+    setLanguage(newLanguage);
+
+    window.localStorage.setItem(
+      "idletrend-language",
+      newLanguage
+    );
+
+    document.documentElement.lang = newLanguage;
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -58,6 +107,8 @@ export default function Home() {
   }, [search]);
 
   useEffect(() => {
+    setLoading(true);
+
     fetch(
       `${API_URL}/api/items?page=${page}&limit=25&search=${encodeURIComponent(
         debouncedSearch
@@ -65,13 +116,16 @@ export default function Home() {
     )
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Item verileri alınamadı.");
+          throw new Error(
+            "Item data could not be retrieved."
+          );
         }
 
         return response.json();
       })
       .then((data) => {
         setItems(data.items ?? []);
+
         setPagination(
           data.pagination ?? {
             page: 1,
@@ -80,10 +134,11 @@ export default function Home() {
             totalPages: 1,
           }
         );
+
         setLoading(false);
       })
       .catch((error) => {
-        console.error("Veriler alınamadı:", error);
+        console.error("Item data error:", error);
         setItems([]);
         setLoading(false);
       });
@@ -93,7 +148,9 @@ export default function Home() {
     fetch(`${API_URL}/api/movers`)
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Hareket verileri alınamadı.");
+          throw new Error(
+            "Market movement data could not be retrieved."
+          );
         }
 
         return response.json();
@@ -103,27 +160,61 @@ export default function Home() {
         setLosers(data.losers ?? []);
       })
       .catch((error) => {
-        console.error("Yükselen ve düşenler alınamadı:", error);
+        console.error("Market movers error:", error);
       });
   }, []);
-
-  const displayedItems = items;
-
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
-        <h1 className="text-4xl font-bold">IdleTrend</h1>
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold">
+              IdleTrend
+            </h1>
 
-        <p className="mt-2 text-zinc-400">
-          Steam Market item fiyatları ve ilan bilgileri
-        </p>
+            <p className="mt-2 text-zinc-400">
+              {text.siteSubtitle}
+            </p>
+          </div>
+
+          <div
+            className="flex w-fit rounded-lg border border-zinc-800 bg-zinc-900 p-1"
+            aria-label="Language selector"
+          >
+            <button
+              type="button"
+              onClick={() => changeLanguage("tr")}
+              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                language === "tr"
+                  ? "bg-white text-black"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              TR
+            </button>
+
+            <button
+              type="button"
+              onClick={() => changeLanguage("en")}
+              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                language === "en"
+                  ? "bg-white text-black"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              EN
+            </button>
+          </div>
+        </header>
 
         <input
           type="text"
-          placeholder="Tüm itemlerde ara..."
+          placeholder={text.searchPlaceholder}
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) =>
+            setSearch(event.target.value)
+          }
           className="mt-6 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-zinc-600"
         />
 
@@ -135,30 +226,36 @@ export default function Home() {
           }}
           className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none"
         >
-          <option value="name">İsme göre</option>
+          <option value="name">
+            {text.sortByName}
+          </option>
+
           <option value="price-asc">
-            Fiyat: düşükten yükseğe
+            {text.sortPriceAsc}
           </option>
+
           <option value="price-desc">
-            Fiyat: yüksekten düşüğe
+            {text.sortPriceDesc}
           </option>
+
           <option value="listings-desc">
-            İlan: çoktan aza
+            {text.sortListingsDesc}
           </option>
+
           <option value="listings-asc">
-            İlan: azdan çoğa
+            {text.sortListingsAsc}
           </option>
         </select>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
             <h2 className="text-xl font-semibold">
-              En Çok Yükselenler
+              {text.topGainers}
             </h2>
 
             {gainers.length === 0 ? (
               <p className="mt-4 text-sm text-zinc-400">
-                Şu an fiyatı yükselen item yok.
+                {text.noGainers}
               </p>
             ) : (
               <div className="mt-4 space-y-3">
@@ -180,17 +277,24 @@ export default function Home() {
                       )}
 
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">
+                          {item.name}
+                        </p>
 
                         <p className="text-sm text-zinc-400">
-                          {item.previousPriceText ?? "-"} →{" "}
+                          {item.previousPriceText ?? "-"}{" "}
+                          →{" "}
                           {item.latestPriceText ?? "-"}
                         </p>
                       </div>
                     </div>
 
                     <span className="font-semibold text-green-400">
-                      +{item.priceChangePercent.toFixed(1)}%
+                      +
+                      {item.priceChangePercent.toFixed(
+                        1
+                      )}
+                      %
                     </span>
                   </Link>
                 ))}
@@ -200,12 +304,12 @@ export default function Home() {
 
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
             <h2 className="text-xl font-semibold">
-              En Çok Düşenler
+              {text.topLosers}
             </h2>
 
             {losers.length === 0 ? (
               <p className="mt-4 text-sm text-zinc-400">
-                Şu an fiyatı düşen item yok.
+                {text.noLosers}
               </p>
             ) : (
               <div className="mt-4 space-y-3">
@@ -227,17 +331,23 @@ export default function Home() {
                       )}
 
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">
+                          {item.name}
+                        </p>
 
                         <p className="text-sm text-zinc-400">
-                          {item.previousPriceText ?? "-"} →{" "}
+                          {item.previousPriceText ?? "-"}{" "}
+                          →{" "}
                           {item.latestPriceText ?? "-"}
                         </p>
                       </div>
                     </div>
 
                     <span className="font-semibold text-red-400">
-                      {item.priceChangePercent.toFixed(1)}%
+                      {item.priceChangePercent.toFixed(
+                        1
+                      )}
+                      %
                     </span>
                   </Link>
                 ))}
@@ -247,23 +357,37 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <p className="mt-10">Veriler yükleniyor...</p>
+          <p className="mt-10">{text.loading}</p>
         ) : (
           <>
-            <div className="mt-10 overflow-hidden rounded-xl border border-zinc-800">
-              <table className="w-full text-left">
+            <div className="mt-10 overflow-x-auto rounded-xl border border-zinc-800">
+              <table className="w-full min-w-[700px] text-left">
                 <thead className="bg-zinc-900">
                   <tr>
-                    <th className="px-4 py-3">Görsel</th>
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3">Tür</th>
-                    <th className="px-4 py-3">Fiyat</th>
-                    <th className="px-4 py-3">İlan</th>
+                    <th className="px-4 py-3">
+                      {text.image}
+                    </th>
+
+                    <th className="px-4 py-3">
+                      {text.item}
+                    </th>
+
+                    <th className="px-4 py-3">
+                      {text.type}
+                    </th>
+
+                    <th className="px-4 py-3">
+                      {text.price}
+                    </th>
+
+                    <th className="px-4 py-3">
+                      {text.listings}
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {displayedItems.map((item) => (
+                  {items.map((item) => (
                     <tr
                       key={item.id}
                       className="border-t border-zinc-800 hover:bg-zinc-900"
@@ -298,7 +422,11 @@ export default function Home() {
                       </td>
 
                       <td className="px-4 py-3">
-                        {item.latestListings ?? "-"}
+                        {item.latestListings?.toLocaleString(
+                          language === "tr"
+                            ? "tr-TR"
+                            : "en-US"
+                        ) ?? "-"}
                       </td>
                     </tr>
                   ))}
@@ -317,13 +445,20 @@ export default function Home() {
                 disabled={page <= 1}
                 className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                ← Önceki
+                {text.previous}
               </button>
 
               <p className="text-center text-sm text-zinc-400">
-                Sayfa {pagination.page} / {pagination.totalPages}
+                {text.page} {pagination.page} /{" "}
+                {pagination.totalPages}
                 {" · "}
-                Toplam {pagination.totalItems} item
+                {text.total}{" "}
+                {pagination.totalItems.toLocaleString(
+                  language === "tr"
+                    ? "tr-TR"
+                    : "en-US"
+                )}{" "}
+                {text.items}
               </p>
 
               <button
@@ -336,10 +471,12 @@ export default function Home() {
                     )
                   )
                 }
-                disabled={page >= pagination.totalPages}
+                disabled={
+                  page >= pagination.totalPages
+                }
                 className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Sonraki →
+                {text.next}
               </button>
             </div>
           </>
