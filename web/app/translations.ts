@@ -71,9 +71,9 @@ export const translations = {
     noGainers: "No items are currently gaining in price.",
     noLosers: "No items are currently dropping in price.",
 
-    topAccumulating: "Accumulating",
+    topAccumulating: "Most Accumulating",
     noAccumulating: "No items are currently showing strong accumulation.",
-    listingDrop: "Listing drop",
+    listingDrop: "Listing falling",
 
     image: "Image",
     item: "Item",
