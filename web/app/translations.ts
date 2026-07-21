@@ -16,6 +16,10 @@ export const translations = {
     noGainers: "Şu an fiyatı yükselen item yok.",
     noLosers: "Şu an fiyatı düşen item yok.",
 
+    topAccumulating: "Toplananlar",
+    noAccumulating: "Şu an belirgin şekilde toplanan item yok.",
+    listingDrop: "İlan azalışı",
+
     image: "Görsel",
     item: "Item",
     type: "Tür",
@@ -66,6 +70,10 @@ export const translations = {
     topLosers: "Top Losers",
     noGainers: "No items are currently gaining in price.",
     noLosers: "No items are currently dropping in price.",
+
+    topAccumulating: "Accumulating",
+    noAccumulating: "No items are currently showing strong accumulation.",
+    listingDrop: "Listing drop",
 
     image: "Image",
     item: "Item",

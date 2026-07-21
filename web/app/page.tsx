@@ -27,6 +27,20 @@ type Mover = {
   priceChangePercent: number;
 };
 
+type AccumulatingItem = {
+  id: number;
+  name: string;
+  type: string | null;
+  iconUrl: string | null;
+  latestPriceText: string | null;
+  previousPriceText: string | null;
+  latestListings: number;
+  previousListings: number;
+  listingChange: number;
+  listingChangePercent: number;
+  priceChangePercent: number;
+};
+
 type Pagination = {
   page: number;
   limit: number;
@@ -60,19 +74,27 @@ export default function Home() {
 
   const [gainers, setGainers] = useState<Mover[]>([]);
   const [losers, setLosers] = useState<Mover[]>([]);
+  const [accumulating, setAccumulating] = useState<
+    AccumulatingItem[]
+  >([]);
 
   const text = translations[language];
+  const locale =
+    language === "tr" ? "tr-TR" : "en-US";
 
   useEffect(() => {
     const savedLanguage =
-      window.localStorage.getItem("idletrend-language");
+      window.localStorage.getItem(
+        "idletrend-language"
+      );
 
     if (
       savedLanguage === "tr" ||
       savedLanguage === "en"
     ) {
       setLanguage(savedLanguage);
-      document.documentElement.lang = savedLanguage;
+      document.documentElement.lang =
+        savedLanguage;
       return;
     }
 
@@ -80,13 +102,18 @@ export default function Home() {
       window.navigator.language.toLowerCase();
 
     const initialLanguage: Language =
-      browserLanguage.startsWith("tr") ? "tr" : "en";
+      browserLanguage.startsWith("tr")
+        ? "tr"
+        : "en";
 
     setLanguage(initialLanguage);
-    document.documentElement.lang = initialLanguage;
+    document.documentElement.lang =
+      initialLanguage;
   }, []);
 
-  function changeLanguage(newLanguage: Language) {
+  function changeLanguage(
+    newLanguage: Language
+  ) {
     setLanguage(newLanguage);
 
     window.localStorage.setItem(
@@ -94,7 +121,8 @@ export default function Home() {
       newLanguage
     );
 
-    document.documentElement.lang = newLanguage;
+    document.documentElement.lang =
+      newLanguage;
   }
 
   useEffect(() => {
@@ -103,7 +131,8 @@ export default function Home() {
       setPage(1);
     }, 400);
 
-    return () => window.clearTimeout(timer);
+    return () =>
+      window.clearTimeout(timer);
   }, [search]);
 
   useEffect(() => {
@@ -138,29 +167,62 @@ export default function Home() {
         setLoading(false);
       })
       .catch((error) => {
-        console.error("Item data error:", error);
+        console.error(
+          "Item data error:",
+          error
+        );
+
         setItems([]);
         setLoading(false);
       });
   }, [page, debouncedSearch, sort]);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/movers`)
-      .then((response) => {
+    Promise.all([
+      fetch(`${API_URL}/api/movers`).then(
+        (response) => {
+          if (!response.ok) {
+            throw new Error(
+              "Market movement data could not be retrieved."
+            );
+          }
+
+          return response.json();
+        }
+      ),
+      fetch(
+        `${API_URL}/api/accumulating?limit=5`
+      ).then((response) => {
         if (!response.ok) {
           throw new Error(
-            "Market movement data could not be retrieved."
+            "Accumulating item data could not be retrieved."
           );
         }
 
         return response.json();
-      })
-      .then((data) => {
-        setGainers(data.gainers ?? []);
-        setLosers(data.losers ?? []);
-      })
+      }),
+    ])
+      .then(
+        ([moversData, accumulatingData]) => {
+          setGainers(
+            moversData.gainers ?? []
+          );
+
+          setLosers(
+            moversData.losers ?? []
+          );
+
+          setAccumulating(
+            accumulatingData.accumulating ??
+              []
+          );
+        }
+      )
       .catch((error) => {
-        console.error("Market movers error:", error);
+        console.error(
+          "Market overview error:",
+          error
+        );
       });
   }, []);
 
@@ -184,7 +246,9 @@ export default function Home() {
           >
             <button
               type="button"
-              onClick={() => changeLanguage("tr")}
+              onClick={() =>
+                changeLanguage("tr")
+              }
               className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
                 language === "tr"
                   ? "bg-white text-black"
@@ -196,7 +260,9 @@ export default function Home() {
 
             <button
               type="button"
-              onClick={() => changeLanguage("en")}
+              onClick={() =>
+                changeLanguage("en")
+              }
               className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
                 language === "en"
                   ? "bg-white text-black"
@@ -210,7 +276,9 @@ export default function Home() {
 
         <input
           type="text"
-          placeholder={text.searchPlaceholder}
+          placeholder={
+            text.searchPlaceholder
+          }
           value={search}
           onChange={(event) =>
             setSearch(event.target.value)
@@ -247,117 +315,105 @@ export default function Home() {
           </option>
         </select>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="text-xl font-semibold">
-              {text.topGainers}
-            </h2>
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          <MarketCard
+            title={text.topGainers}
+            emptyText={text.noGainers}
+          >
+            {gainers.map((item) => (
+              <Link
+                key={item.id}
+                href={`/item/${item.id}`}
+                className="flex items-center justify-between rounded-lg bg-zinc-950 p-3 transition hover:bg-zinc-800"
+              >
+                <ItemIdentity
+                  name={item.name}
+                  iconUrl={item.iconUrl}
+                  subtitle={`${item.previousPriceText ?? "-"} → ${
+                    item.latestPriceText ?? "-"
+                  }`}
+                />
 
-            {gainers.length === 0 ? (
-              <p className="mt-4 text-sm text-zinc-400">
-                {text.noGainers}
-              </p>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {gainers.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/item/${item.id}`}
-                    className="flex items-center justify-between rounded-lg bg-zinc-950 p-3 hover:bg-zinc-800"
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.iconUrl ? (
-                        <img
-                          src={`https://community.cloudflare.steamstatic.com/economy/image/${item.iconUrl}/64fx64f`}
-                          alt={item.name}
-                          className="h-10 w-10 object-contain"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded bg-zinc-800" />
-                      )}
+                <span className="font-semibold text-emerald-400">
+                  +
+                  {item.priceChangePercent.toFixed(
+                    1
+                  )}
+                  %
+                </span>
+              </Link>
+            ))}
+          </MarketCard>
 
-                      <div>
-                        <p className="font-medium">
-                          {item.name}
-                        </p>
+          <MarketCard
+            title={text.topLosers}
+            emptyText={text.noLosers}
+          >
+            {losers.map((item) => (
+              <Link
+                key={item.id}
+                href={`/item/${item.id}`}
+                className="flex items-center justify-between rounded-lg bg-zinc-950 p-3 transition hover:bg-zinc-800"
+              >
+                <ItemIdentity
+                  name={item.name}
+                  iconUrl={item.iconUrl}
+                  subtitle={`${item.previousPriceText ?? "-"} → ${
+                    item.latestPriceText ?? "-"
+                  }`}
+                />
 
-                        <p className="text-sm text-zinc-400">
-                          {item.previousPriceText ?? "-"}{" "}
-                          →{" "}
-                          {item.latestPriceText ?? "-"}
-                        </p>
-                      </div>
-                    </div>
+                <span className="font-semibold text-red-400">
+                  {item.priceChangePercent.toFixed(
+                    1
+                  )}
+                  %
+                </span>
+              </Link>
+            ))}
+          </MarketCard>
 
-                    <span className="font-semibold text-green-400">
-                      +
-                      {item.priceChangePercent.toFixed(
-                        1
-                      )}
-                      %
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          <MarketCard
+            title={text.topAccumulating}
+            emptyText={text.noAccumulating}
+          >
+            {accumulating.map((item) => (
+              <Link
+                key={item.id}
+                href={`/item/${item.id}`}
+                className="flex items-center justify-between rounded-lg bg-zinc-950 p-3 transition hover:bg-zinc-800"
+              >
+                <ItemIdentity
+                  name={item.name}
+                  iconUrl={item.iconUrl}
+                  subtitle={`${item.previousListings.toLocaleString(
+                    locale
+                  )} → ${item.latestListings.toLocaleString(
+                    locale
+                  )} ${text.listings.toLowerCase()}`}
+                />
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="text-xl font-semibold">
-              {text.topLosers}
-            </h2>
+                <div className="text-right">
+                  <span className="block font-semibold text-sky-400">
+                    {item.listingChangePercent.toFixed(
+                      1
+                    )}
+                    %
+                  </span>
 
-            {losers.length === 0 ? (
-              <p className="mt-4 text-sm text-zinc-400">
-                {text.noLosers}
-              </p>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {losers.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/item/${item.id}`}
-                    className="flex items-center justify-between rounded-lg bg-zinc-950 p-3 hover:bg-zinc-800"
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.iconUrl ? (
-                        <img
-                          src={`https://community.cloudflare.steamstatic.com/economy/image/${item.iconUrl}/64fx64f`}
-                          alt={item.name}
-                          className="h-10 w-10 object-contain"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded bg-zinc-800" />
-                      )}
-
-                      <div>
-                        <p className="font-medium">
-                          {item.name}
-                        </p>
-
-                        <p className="text-sm text-zinc-400">
-                          {item.previousPriceText ?? "-"}{" "}
-                          →{" "}
-                          {item.latestPriceText ?? "-"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span className="font-semibold text-red-400">
-                      {item.priceChangePercent.toFixed(
-                        1
-                      )}
-                      %
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+                  <span className="text-xs text-zinc-500">
+                    {text.listingDrop}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </MarketCard>
         </div>
 
         {loading ? (
-          <p className="mt-10">{text.loading}</p>
+          <p className="mt-10">
+            {text.loading}
+          </p>
         ) : (
           <>
             <div className="mt-10 overflow-x-auto rounded-xl border border-zinc-800">
@@ -418,14 +474,13 @@ export default function Home() {
                       </td>
 
                       <td className="px-4 py-3">
-                        {item.latestPriceText ?? "-"}
+                        {item.latestPriceText ??
+                          "-"}
                       </td>
 
                       <td className="px-4 py-3">
                         {item.latestListings?.toLocaleString(
-                          language === "tr"
-                            ? "tr-TR"
-                            : "en-US"
+                          locale
                         ) ?? "-"}
                       </td>
                     </tr>
@@ -439,7 +494,10 @@ export default function Home() {
                 type="button"
                 onClick={() =>
                   setPage((currentPage) =>
-                    Math.max(currentPage - 1, 1)
+                    Math.max(
+                      currentPage - 1,
+                      1
+                    )
                   )
                 }
                 disabled={page <= 1}
@@ -449,14 +507,13 @@ export default function Home() {
               </button>
 
               <p className="text-center text-sm text-zinc-400">
-                {text.page} {pagination.page} /{" "}
+                {text.page}{" "}
+                {pagination.page} /{" "}
                 {pagination.totalPages}
                 {" · "}
                 {text.total}{" "}
                 {pagination.totalItems.toLocaleString(
-                  language === "tr"
-                    ? "tr-TR"
-                    : "en-US"
+                  locale
                 )}{" "}
                 {text.items}
               </p>
@@ -472,7 +529,8 @@ export default function Home() {
                   )
                 }
                 disabled={
-                  page >= pagination.totalPages
+                  page >=
+                  pagination.totalPages
                 }
                 className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -483,5 +541,76 @@ export default function Home() {
         )}
       </div>
     </main>
+  );
+}
+
+type MarketCardProps = {
+  title: string;
+  emptyText: string;
+  children: React.ReactNode;
+};
+
+function MarketCard({
+  title,
+  emptyText,
+  children,
+}: MarketCardProps) {
+  const hasChildren =
+    Array.isArray(children)
+      ? children.length > 0
+      : Boolean(children);
+
+  return (
+    <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <h2 className="text-xl font-semibold">
+        {title}
+      </h2>
+
+      {hasChildren ? (
+        <div className="mt-4 space-y-3">
+          {children}
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-zinc-400">
+          {emptyText}
+        </p>
+      )}
+    </section>
+  );
+}
+
+type ItemIdentityProps = {
+  name: string;
+  iconUrl: string | null;
+  subtitle: string;
+};
+
+function ItemIdentity({
+  name,
+  iconUrl,
+  subtitle,
+}: ItemIdentityProps) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      {iconUrl ? (
+        <img
+          src={`https://community.cloudflare.steamstatic.com/economy/image/${iconUrl}/64fx64f`}
+          alt={name}
+          className="h-10 w-10 shrink-0 object-contain"
+        />
+      ) : (
+        <div className="h-10 w-10 shrink-0 rounded bg-zinc-800" />
+      )}
+
+      <div className="min-w-0">
+        <p className="truncate font-medium">
+          {name}
+        </p>
+
+        <p className="text-sm text-zinc-400">
+          {subtitle}
+        </p>
+      </div>
+    </div>
   );
 }
