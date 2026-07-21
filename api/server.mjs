@@ -397,6 +397,125 @@ app.get("/api/movers", async (req, res) => {
   }
 });
 
+app.get("/api/accumulating", async (req, res) => {
+  try {
+    const requestedLimit = Number(req.query.limit) || 5;
+    const limit = Math.min(
+      Math.max(requestedLimit, 1),
+      20
+    );
+
+    const items = await prisma.item.findMany({
+      include: {
+        records: {
+          orderBy: {
+            snapshot: {
+              fetchedAt: "desc",
+            },
+          },
+          take: 2,
+          include: {
+            snapshot: true,
+          },
+        },
+      },
+    });
+
+    const accumulating = items
+      .map((item) => {
+        const latest = item.records[0];
+        const previous = item.records[1];
+
+        if (
+          !latest ||
+          !previous ||
+          previous.listings <= 0
+        ) {
+          return null;
+        }
+
+        const listingChange =
+          latest.listings - previous.listings;
+
+        const listingChangePercent =
+          (listingChange / previous.listings) * 100;
+
+        const priceChangeCents =
+          latest.priceCents - previous.priceCents;
+
+        const priceChangePercent =
+          previous.priceCents > 0
+            ? (priceChangeCents /
+                previous.priceCents) *
+              100
+            : 0;
+
+        return {
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          iconUrl: item.iconUrl,
+
+          latestPriceCents: latest.priceCents,
+          latestPriceText: latest.priceText,
+          previousPriceCents: previous.priceCents,
+          previousPriceText: previous.priceText,
+
+          latestListings: latest.listings,
+          previousListings: previous.listings,
+          listingChange,
+          listingChangePercent,
+
+          priceChangeCents,
+          priceChangePercent,
+
+          latestFetchedAt:
+            latest.snapshot.fetchedAt,
+          previousFetchedAt:
+            previous.snapshot.fetchedAt,
+        };
+      })
+      .filter(
+        (item) =>
+          item !== null &&
+          item.listingChange < 0 &&
+          item.listingChangePercent <= -5
+      )
+      .sort((a, b) => {
+        if (
+          a.listingChangePercent !==
+          b.listingChangePercent
+        ) {
+          return (
+            a.listingChangePercent -
+            b.listingChangePercent
+          );
+        }
+
+        return (
+          a.listingChange - b.listingChange
+        );
+      })
+      .slice(0, limit);
+
+    res.json({
+      accumulating,
+      count: accumulating.length,
+      comparison:
+        "latest_snapshot_vs_previous_snapshot",
+    });
+  } catch (error) {
+    console.error(
+      "Toplanan itemler hatası:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Toplanan itemler alınamadı.",
+    });
+  }
+});
+
 app.use((error, req, res, next) => {
   if (error?.message?.includes("CORS")) {
     return res.status(403).json({
