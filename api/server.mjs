@@ -100,7 +100,11 @@ app.get("/api/items", async (req, res) => {
       typeof req.query.search === "string"
         ? req.query.search.trim()
         : "";
-
+     
+    const type =
+      typeof req.query.type === "string"
+        ? req.query.type.trim()
+        : "";
     const sort =
       typeof req.query.sort === "string"
         ? req.query.sort
@@ -118,47 +122,48 @@ app.get("/api/items", async (req, res) => {
       ? sort
       : "name";
 
-    const where = search
-      ? {
-          OR: [
-            {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              hashName: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              type: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-          ],
-        }
-      : {};
+    const filters = [];
 
-    const items = await prisma.item.findMany({
-      where,
-      include: {
-        records: {
-          orderBy: {
-            snapshot: {
-              fetchedAt: "desc",
-            },
-          },
-          take: 1,
-          include: {
-            snapshot: true,
-          },
+if (search) {
+  filters.push({
+    OR: [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
         },
       },
-    });
+      {
+        hashName: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        type: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+    ],
+  });
+}
+
+if (type) {
+  filters.push({
+    type: {
+      contains: type,
+      mode: "insensitive",
+    },
+  });
+}
+
+const where =
+  filters.length > 0
+    ? {
+        AND: filters,
+      }
+    : {};
 
     const result = items.map((item) => {
       const latestRecord = item.records[0] ?? null;
