@@ -28,6 +28,28 @@ export const translations = {
     page: "Sayfa",
     total: "Toplam",
     items: "item",
+
+    backHome: "← Ana sayfaya dön",
+    itemNotFound: "Item bulunamadı.",
+    itemLoadError: "Item detayı yüklenemedi.",
+    noTypeInformation: "Tür bilgisi yok",
+
+    currentPrice: "Güncel fiyat",
+    currentListings: "Güncel ilan",
+    latestChange: "Son değişim",
+
+    tradeStatus: "Takas durumu",
+    tradable: "Takas edilebilir",
+    notTradable: "Takas edilemez",
+
+    priceAndListingHistory: "Fiyat ve İlan Geçmişi",
+    snapshotRecords: "Steam Market snapshot kayıtları",
+    insufficientHistory:
+      "Grafik için yeterli geçmiş verisi yok.",
+
+    historyRecords: "Geçmiş Kayıtlar",
+    date: "Tarih",
+    change: "Değişim",
   },
 
   en: {
@@ -57,5 +79,27 @@ export const translations = {
     page: "Page",
     total: "Total",
     items: "items",
+
+    backHome: "← Back to home",
+    itemNotFound: "Item not found.",
+    itemLoadError: "Item details could not be loaded.",
+    noTypeInformation: "No type information",
+
+    currentPrice: "Current price",
+    currentListings: "Current listings",
+    latestChange: "Latest change",
+
+    tradeStatus: "Trade status",
+    tradable: "Tradable",
+    notTradable: "Not tradable",
+
+    priceAndListingHistory: "Price and Listing History",
+    snapshotRecords: "Steam Market snapshot records",
+    insufficientHistory:
+      "There is not enough historical data for the chart.",
+
+    historyRecords: "Historical Records",
+    date: "Date",
+    change: "Change",
   },
 } as const;
