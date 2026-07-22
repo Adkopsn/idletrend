@@ -180,6 +180,22 @@ const where =
     },
   },
 });
+    const items = await prisma.item.findMany({
+  where,
+  include: {
+    records: {
+      orderBy: {
+        snapshot: {
+          fetchedAt: "desc",
+        },
+      },
+      take: 1,
+      include: {
+        snapshot: true,
+      },
+    },
+  },
+});
 
     const result = items.map((item) => {
       const latestRecord = item.records[0] ?? null;
