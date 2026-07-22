@@ -62,7 +62,9 @@ export default function Home() {
   const [debouncedSearch, setDebouncedSearch] =
     useState("");
   const [sort, setSort] = useState("name");
+  const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(1);
+  
 
   const [pagination, setPagination] =
     useState<Pagination>({
@@ -139,9 +141,11 @@ export default function Home() {
     setLoading(true);
 
     fetch(
-      `${API_URL}/api/items?page=${page}&limit=25&search=${encodeURIComponent(
-        debouncedSearch
-      )}&sort=${encodeURIComponent(sort)}`
+    `${API_URL}/api/items?page=${page}&limit=25&search=${encodeURIComponent(
+  debouncedSearch
+)}&sort=${encodeURIComponent(
+  sort
+)}&type=${encodeURIComponent(typeFilter)}`
     )
       .then((response) => {
         if (!response.ok) {
@@ -175,7 +179,7 @@ export default function Home() {
         setItems([]);
         setLoading(false);
       });
-  }, [page, debouncedSearch, sort]);
+  }, [page, debouncedSearch, sort, typeFilter]);
 
   useEffect(() => {
     Promise.all([
@@ -314,6 +318,56 @@ export default function Home() {
             {text.sortListingsAsc}
           </option>
         </select>
+        <select
+  value={typeFilter}
+  onChange={(event) => {
+    setTypeFilter(event.target.value);
+    setPage(1);
+  }}
+  className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none"
+>
+  <option value="">
+    {language === "tr" ? "Tüm türler" : "All types"}
+  </option>
+
+  <option value="Ring">
+    {language === "tr" ? "Yüzükler" : "Rings"}
+  </option>
+
+  <option value="Earring">
+    {language === "tr" ? "Küpeler" : "Earrings"}
+  </option>
+
+  <option value="Amulet">
+    {language === "tr" ? "Muskalar" : "Amulets"}
+  </option>
+
+  <option value="Gloves">
+    {language === "tr" ? "Eldivenler" : "Gloves"}
+  </option>
+
+  <option value="Boots">
+    {language === "tr" ? "Botlar" : "Boots"}
+  </option>
+
+  <option value="Axe">
+    {language === "tr" ? "Baltalar" : "Axes"}
+  </option>
+
+  <option value="Sword">
+    {language === "tr" ? "Kılıçlar" : "Swords"}
+  </option>
+
+  <option value="Crossbow">
+    {language === "tr" ? "Arbaletler" : "Crossbows"}
+  </option>
+
+  <option value="Decoration Material">
+    {language === "tr"
+      ? "Dekorasyon Malzemeleri"
+      : "Decoration Materials"}
+  </option>
+</select>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           <MarketCard
