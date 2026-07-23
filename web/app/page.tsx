@@ -58,9 +58,11 @@ export default function Home() {
 
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] =
     useState("");
+
   const [sort, setSort] = useState("name");
   const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -70,6 +72,12 @@ export default function Home() {
   >([]);
 
   const [showFavoritesOnly, setShowFavoritesOnly] =
+    useState(false);
+
+  const [watchlistItems, setWatchlistItems] =
+    useState<Item[]>([]);
+
+  const [watchlistLoading, setWatchlistLoading] =
     useState(false);
 
   const [pagination, setPagination] =
@@ -142,7 +150,7 @@ export default function Home() {
         setFavoriteIds(
           parsedFavorites.filter(
             (id): id is number =>
-              Number.isInteger(id)
+              Number.isInteger(id) && id > 0
           )
         );
       }
@@ -197,6 +205,8 @@ export default function Home() {
   }, [search]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     setLoading(true);
 
     fetch(
@@ -204,7 +214,10 @@ export default function Home() {
         debouncedSearch
       )}&sort=${encodeURIComponent(
         sort
-      )}&type=${encodeURIComponent(typeFilter)}`
+      )}&type=${encodeURIComponent(typeFilter)}`,
+      {
+        signal: controller.signal,
+      }
     )
       .then((response) => {
         if (!response.ok) {
@@ -226,18 +239,26 @@ export default function Home() {
             totalPages: 1,
           }
         );
-
-        setLoading(false);
       })
       .catch((error) => {
+        if (error.name === "AbortError") {
+          return;
+        }
+
         console.error(
           "Item data error:",
           error
         );
 
         setItems([]);
-        setLoading(false);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
+    return () => controller.abort();
   }, [
     page,
     debouncedSearch,
@@ -246,21 +267,26 @@ export default function Home() {
   ]);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`${API_URL}/api/movers`).then(
-        (response) => {
-          if (!response.ok) {
-            throw new Error(
-              "Market movement data could not be retrieved."
-            );
-          }
+    const controller = new AbortController();
 
-          return response.json();
+    Promise.all([
+      fetch(`${API_URL}/api/movers`, {
+        signal: controller.signal,
+      }).then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            "Market movement data could not be retrieved."
+          );
         }
-      ),
+
+        return response.json();
+      }),
 
       fetch(
-        `${API_URL}/api/accumulating?limit=5`
+        `${API_URL}/api/accumulating?limit=5`,
+        {
+          signal: controller.signal,
+        }
       ).then((response) => {
         if (!response.ok) {
           throw new Error(
@@ -288,18 +314,85 @@ export default function Home() {
         }
       )
       .catch((error) => {
+        if (error.name === "AbortError") {
+          return;
+        }
+
         console.error(
           "Market overview error:",
           error
         );
       });
+
+    return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (!showFavoritesOnly) {
+      setWatchlistItems([]);
+      setWatchlistLoading(false);
+      return;
+    }
+
+    if (favoriteIds.length === 0) {
+      setWatchlistItems([]);
+      setWatchlistLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setWatchlistLoading(true);
+
+    fetch(
+      `${API_URL}/api/watchlist?ids=${encodeURIComponent(
+        favoriteIds.join(",")
+      )}`,
+      {
+        signal: controller.signal,
+      }
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            "Watchlist data could not be retrieved."
+          );
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setWatchlistItems(data.items ?? []);
+      })
+      .catch((error) => {
+        if (error.name === "AbortError") {
+          return;
+        }
+
+        console.error(
+          "Watchlist error:",
+          error
+        );
+
+        setWatchlistItems([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setWatchlistLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [showFavoritesOnly, favoriteIds]);
+
   const visibleItems = showFavoritesOnly
-    ? items.filter((item) =>
-        favoriteIds.includes(item.id)
-      )
+    ? watchlistItems
     : items;
+
+  const tableLoading =
+    showFavoritesOnly
+      ? watchlistLoading
+      : loading;
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
@@ -358,7 +451,8 @@ export default function Home() {
           onChange={(event) =>
             setSearch(event.target.value)
           }
-          className="mt-6 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-zinc-600"
+          disabled={showFavoritesOnly}
+          className="mt-6 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-zinc-600 disabled:cursor-not-allowed disabled:opacity-50"
         />
 
         <select
@@ -367,7 +461,8 @@ export default function Home() {
             setSort(event.target.value);
             setPage(1);
           }}
-          className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none"
+          disabled={showFavoritesOnly}
+          className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none disabled:cursor-not-allowed disabled:opacity-50"
         >
           <option value="name">
             {text.sortByName}
@@ -399,7 +494,8 @@ export default function Home() {
 
             setPage(1);
           }}
-          className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none"
+          disabled={showFavoritesOnly}
+          className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none disabled:cursor-not-allowed disabled:opacity-50"
         >
           <option value="">
             {language === "tr"
@@ -592,7 +688,7 @@ export default function Home() {
           </MarketCard>
         </div>
 
-        {loading ? (
+        {tableLoading ? (
           <p className="mt-10">
             {text.loading}
           </p>
@@ -732,15 +828,13 @@ export default function Home() {
                         className="px-4 py-10 text-center text-zinc-400"
                       >
                         {showFavoritesOnly
-                          ? language === "tr"
-                            ? favoriteIds.length ===
-                              0
+                          ? favoriteIds.length === 0
+                            ? language === "tr"
                               ? "Henüz takip listene item eklemedin."
-                              : "Bu sayfada takip ettiğin item bulunmuyor."
-                            : favoriteIds.length ===
-                                0
-                              ? "You have not added any items to your watchlist yet."
-                              : "No watched items were found on this page."
+                              : "You have not added any items to your watchlist yet."
+                            : language === "tr"
+                              ? "Takip listesindeki itemler bulunamadı."
+                              : "Watchlist items could not be found."
                           : language === "tr"
                             ? "Item bulunamadı."
                             : "No items found."}
@@ -751,54 +845,69 @@ export default function Home() {
               </table>
             </div>
 
-            <div className="mt-6 flex items-center justify-between gap-4">
-              <button
-                type="button"
-                onClick={() =>
-                  setPage((currentPage) =>
-                    Math.max(
-                      currentPage - 1,
-                      1
+            {!showFavoritesOnly && (
+              <div className="mt-6 flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((currentPage) =>
+                      Math.max(
+                        currentPage - 1,
+                        1
+                      )
                     )
-                  )
-                }
-                disabled={page <= 1}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {text.previous}
-              </button>
+                  }
+                  disabled={page <= 1}
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {text.previous}
+                </button>
 
-              <p className="text-center text-sm text-zinc-400">
-                {text.page}{" "}
-                {pagination.page} /{" "}
-                {pagination.totalPages}
-                {" · "}
-                {text.total}{" "}
-                {pagination.totalItems.toLocaleString(
-                  locale
-                )}{" "}
-                {text.items}
-              </p>
+                <p className="text-center text-sm text-zinc-400">
+                  {text.page}{" "}
+                  {pagination.page} /{" "}
+                  {pagination.totalPages}
+                  {" · "}
+                  {text.total}{" "}
+                  {pagination.totalItems.toLocaleString(
+                    locale
+                  )}{" "}
+                  {text.items}
+                </p>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setPage((currentPage) =>
-                    Math.min(
-                      currentPage + 1,
-                      pagination.totalPages
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((currentPage) =>
+                      Math.min(
+                        currentPage + 1,
+                        pagination.totalPages
+                      )
                     )
-                  )
-                }
-                disabled={
-                  page >=
-                  pagination.totalPages
-                }
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {text.next}
-              </button>
-            </div>
+                  }
+                  disabled={
+                    page >=
+                    pagination.totalPages
+                  }
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {text.next}
+                </button>
+              </div>
+            )}
+
+            {showFavoritesOnly &&
+              visibleItems.length > 0 && (
+                <p className="mt-6 text-center text-sm text-zinc-400">
+                  {language === "tr"
+                    ? `${visibleItems.length.toLocaleString(
+                        locale
+                      )} takip edilen item`
+                    : `${visibleItems.length.toLocaleString(
+                        locale
+                      )} watched items`}
+                </p>
+              )}
           </>
         )}
       </div>
