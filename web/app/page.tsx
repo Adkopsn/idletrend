@@ -64,7 +64,13 @@ export default function Home() {
   const [sort, setSort] = useState("name");
   const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(1);
-  
+
+  const [favoriteIds, setFavoriteIds] = useState<
+    number[]
+  >([]);
+
+  const [showFavoritesOnly, setShowFavoritesOnly] =
+    useState(false);
 
   const [pagination, setPagination] =
     useState<Pagination>({
@@ -76,11 +82,13 @@ export default function Home() {
 
   const [gainers, setGainers] = useState<Mover[]>([]);
   const [losers, setLosers] = useState<Mover[]>([]);
+
   const [accumulating, setAccumulating] = useState<
     AccumulatingItem[]
   >([]);
 
   const text = translations[language];
+
   const locale =
     language === "tr" ? "tr-TR" : "en-US";
 
@@ -95,8 +103,10 @@ export default function Home() {
       savedLanguage === "en"
     ) {
       setLanguage(savedLanguage);
+
       document.documentElement.lang =
         savedLanguage;
+
       return;
     }
 
@@ -109,9 +119,58 @@ export default function Home() {
         : "en";
 
     setLanguage(initialLanguage);
+
     document.documentElement.lang =
       initialLanguage;
   }, []);
+
+  useEffect(() => {
+    const savedFavorites =
+      window.localStorage.getItem(
+        "idletrend-favorites"
+      );
+
+    if (!savedFavorites) {
+      return;
+    }
+
+    try {
+      const parsedFavorites =
+        JSON.parse(savedFavorites);
+
+      if (Array.isArray(parsedFavorites)) {
+        setFavoriteIds(
+          parsedFavorites.filter(
+            (id): id is number =>
+              Number.isInteger(id)
+          )
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Favoriler okunamadı:",
+        error
+      );
+    }
+  }, []);
+
+  function toggleFavorite(itemId: number) {
+    setFavoriteIds((currentFavorites) => {
+      const nextFavorites =
+        currentFavorites.includes(itemId)
+          ? currentFavorites.filter(
+              (id) => id !== itemId
+            )
+          : [...currentFavorites, itemId];
+
+      window.localStorage.setItem(
+        "idletrend-favorites",
+        JSON.stringify(nextFavorites)
+      );
+
+      return nextFavorites;
+    });
+  }
 
   function changeLanguage(
     newLanguage: Language
@@ -141,11 +200,11 @@ export default function Home() {
     setLoading(true);
 
     fetch(
-    `${API_URL}/api/items?page=${page}&limit=25&search=${encodeURIComponent(
-  debouncedSearch
-)}&sort=${encodeURIComponent(
-  sort
-)}&type=${encodeURIComponent(typeFilter)}`
+      `${API_URL}/api/items?page=${page}&limit=25&search=${encodeURIComponent(
+        debouncedSearch
+      )}&sort=${encodeURIComponent(
+        sort
+      )}&type=${encodeURIComponent(typeFilter)}`
     )
       .then((response) => {
         if (!response.ok) {
@@ -179,7 +238,12 @@ export default function Home() {
         setItems([]);
         setLoading(false);
       });
-  }, [page, debouncedSearch, sort, typeFilter]);
+  }, [
+    page,
+    debouncedSearch,
+    sort,
+    typeFilter,
+  ]);
 
   useEffect(() => {
     Promise.all([
@@ -194,6 +258,7 @@ export default function Home() {
           return response.json();
         }
       ),
+
       fetch(
         `${API_URL}/api/accumulating?limit=5`
       ).then((response) => {
@@ -229,6 +294,12 @@ export default function Home() {
         );
       });
   }, []);
+
+  const visibleItems = showFavoritesOnly
+    ? items.filter((item) =>
+        favoriteIds.includes(item.id)
+      )
+    : items;
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
@@ -318,56 +389,105 @@ export default function Home() {
             {text.sortListingsAsc}
           </option>
         </select>
+
         <select
-  value={typeFilter}
-  onChange={(event) => {
-    setTypeFilter(event.target.value);
-    setPage(1);
-  }}
-  className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none"
->
-  <option value="">
-    {language === "tr" ? "Tüm türler" : "All types"}
-  </option>
+          value={typeFilter}
+          onChange={(event) => {
+            setTypeFilter(
+              event.target.value
+            );
 
-  <option value="Ring">
-    {language === "tr" ? "Yüzükler" : "Rings"}
-  </option>
+            setPage(1);
+          }}
+          className="mt-3 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none"
+        >
+          <option value="">
+            {language === "tr"
+              ? "Tüm türler"
+              : "All types"}
+          </option>
 
-  <option value="Earring">
-    {language === "tr" ? "Küpeler" : "Earrings"}
-  </option>
+          <option value="Ring">
+            {language === "tr"
+              ? "Yüzükler"
+              : "Rings"}
+          </option>
 
-  <option value="Amulet">
-    {language === "tr" ? "Muskalar" : "Amulets"}
-  </option>
+          <option value="Earring">
+            {language === "tr"
+              ? "Küpeler"
+              : "Earrings"}
+          </option>
 
-  <option value="Gloves">
-    {language === "tr" ? "Eldivenler" : "Gloves"}
-  </option>
+          <option value="Amulet">
+            {language === "tr"
+              ? "Muskalar"
+              : "Amulets"}
+          </option>
 
-  <option value="Boots">
-    {language === "tr" ? "Botlar" : "Boots"}
-  </option>
+          <option value="Gloves">
+            {language === "tr"
+              ? "Eldivenler"
+              : "Gloves"}
+          </option>
 
-  <option value="Axe">
-    {language === "tr" ? "Baltalar" : "Axes"}
-  </option>
+          <option value="Boots">
+            {language === "tr"
+              ? "Botlar"
+              : "Boots"}
+          </option>
 
-  <option value="Sword">
-    {language === "tr" ? "Kılıçlar" : "Swords"}
-  </option>
+          <option value="Axe">
+            {language === "tr"
+              ? "Baltalar"
+              : "Axes"}
+          </option>
 
-  <option value="Crossbow">
-    {language === "tr" ? "Arbaletler" : "Crossbows"}
-  </option>
+          <option value="Sword">
+            {language === "tr"
+              ? "Kılıçlar"
+              : "Swords"}
+          </option>
 
-  <option value="Decoration Material">
-    {language === "tr"
-      ? "Dekorasyon Malzemeleri"
-      : "Decoration Materials"}
-  </option>
-</select>
+          <option value="Crossbow">
+            {language === "tr"
+              ? "Arbaletler"
+              : "Crossbows"}
+          </option>
+
+          <option value="Decoration Material">
+            {language === "tr"
+              ? "Dekorasyon Malzemeleri"
+              : "Decoration Materials"}
+          </option>
+        </select>
+
+        <button
+          type="button"
+          aria-pressed={showFavoritesOnly}
+          onClick={() => {
+            setShowFavoritesOnly(
+              (current) => !current
+            );
+
+            setPage(1);
+          }}
+          className={`mt-3 flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition ${
+            showFavoritesOnly
+              ? "border-yellow-500 bg-yellow-500/10 text-yellow-300"
+              : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700"
+          }`}
+        >
+          <span>
+            {language === "tr"
+              ? "Yalnızca takip ettiklerimi göster"
+              : "Show watchlist only"}
+          </span>
+
+          <span className="font-semibold">
+            ★ {favoriteIds.length}
+          </span>
+        </button>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           <MarketCard
@@ -383,7 +503,10 @@ export default function Home() {
                 <ItemIdentity
                   name={item.name}
                   iconUrl={item.iconUrl}
-                  subtitle={`${item.previousPriceText ?? "-"} → ${
+                  subtitle={`${
+                    item.previousPriceText ??
+                    "-"
+                  } → ${
                     item.latestPriceText ?? "-"
                   }`}
                 />
@@ -412,7 +535,10 @@ export default function Home() {
                 <ItemIdentity
                   name={item.name}
                   iconUrl={item.iconUrl}
-                  subtitle={`${item.previousPriceText ?? "-"} → ${
+                  subtitle={`${
+                    item.previousPriceText ??
+                    "-"
+                  } → ${
                     item.latestPriceText ?? "-"
                   }`}
                 />
@@ -429,7 +555,9 @@ export default function Home() {
 
           <MarketCard
             title={text.topAccumulating}
-            emptyText={text.noAccumulating}
+            emptyText={
+              text.noAccumulating
+            }
           >
             {accumulating.map((item) => (
               <Link
@@ -471,9 +599,20 @@ export default function Home() {
         ) : (
           <>
             <div className="mt-10 overflow-x-auto rounded-xl border border-zinc-800">
-              <table className="w-full min-w-[700px] text-left">
+              <table className="w-full min-w-[760px] text-left">
                 <thead className="bg-zinc-900">
                   <tr>
+                    <th
+                      className="w-16 px-4 py-3 text-center"
+                      aria-label={
+                        language === "tr"
+                          ? "Takip listesi"
+                          : "Watchlist"
+                      }
+                    >
+                      ★
+                    </th>
+
                     <th className="px-4 py-3">
                       {text.image}
                     </th>
@@ -497,11 +636,57 @@ export default function Home() {
                 </thead>
 
                 <tbody>
-                  {items.map((item) => (
+                  {visibleItems.map((item) => (
                     <tr
                       key={item.id}
                       className="border-t border-zinc-800 hover:bg-zinc-900"
                     >
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleFavorite(
+                              item.id
+                            )
+                          }
+                          aria-label={
+                            favoriteIds.includes(
+                              item.id
+                            )
+                              ? language === "tr"
+                                ? `${item.name} takip listesinden çıkar`
+                                : `Remove ${item.name} from watchlist`
+                              : language === "tr"
+                                ? `${item.name} takip listesine ekle`
+                                : `Add ${item.name} to watchlist`
+                          }
+                          title={
+                            favoriteIds.includes(
+                              item.id
+                            )
+                              ? language === "tr"
+                                ? "Takip listesinden çıkar"
+                                : "Remove from watchlist"
+                              : language === "tr"
+                                ? "Takip listesine ekle"
+                                : "Add to watchlist"
+                          }
+                          className={`text-2xl transition hover:scale-110 ${
+                            favoriteIds.includes(
+                              item.id
+                            )
+                              ? "text-yellow-400"
+                              : "text-zinc-600 hover:text-yellow-300"
+                          }`}
+                        >
+                          {favoriteIds.includes(
+                            item.id
+                          )
+                            ? "★"
+                            : "☆"}
+                        </button>
+                      </td>
+
                       <td className="px-4 py-3">
                         {item.iconUrl ? (
                           <img
@@ -539,6 +724,29 @@ export default function Home() {
                       </td>
                     </tr>
                   ))}
+
+                  {visibleItems.length === 0 && (
+                    <tr className="border-t border-zinc-800">
+                      <td
+                        colSpan={6}
+                        className="px-4 py-10 text-center text-zinc-400"
+                      >
+                        {showFavoritesOnly
+                          ? language === "tr"
+                            ? favoriteIds.length ===
+                              0
+                              ? "Henüz takip listene item eklemedin."
+                              : "Bu sayfada takip ettiğin item bulunmuyor."
+                            : favoriteIds.length ===
+                                0
+                              ? "You have not added any items to your watchlist yet."
+                              : "No watched items were found on this page."
+                          : language === "tr"
+                            ? "Item bulunamadı."
+                            : "No items found."}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -609,10 +817,9 @@ function MarketCard({
   emptyText,
   children,
 }: MarketCardProps) {
-  const hasChildren =
-    Array.isArray(children)
-      ? children.length > 0
-      : Boolean(children);
+  const hasChildren = Array.isArray(children)
+    ? children.length > 0
+    : Boolean(children);
 
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
