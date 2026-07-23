@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+} from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,21 +16,54 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://idletrend.com"),
+  metadataBase: new URL(
+    "https://idletrend.com"
+  ),
 
   title: {
     default:
-      "IdleTrend – Taskbar Hero Steam Market Prices & Trends",
+      "IdleTrend – Taskbar Hero Steam Market Takibi",
     template: "%s | IdleTrend",
   },
 
   description:
-    "Track Taskbar Hero Steam Market item prices, listing counts, price history, top gainers, top losers, and accumulating TBH items.",
+    "Taskbar Hero Steam Market item fiyatlarını, ilan sayılarını, yükselenleri, düşenleri ve fiyat geçmişini takip edin.",
 
   applicationName: "IdleTrend",
 
+  keywords: [
+    "IdleTrend",
+    "Taskbar Hero",
+    "Taskbar Hero market",
+    "Taskbar Hero Steam Market",
+    "Steam Market fiyatları",
+    "Steam item fiyat takibi",
+    "Steam market tracker",
+  ],
+
+  authors: [
+    {
+      name: "IdleTrend",
+      url: "https://idletrend.com",
+    },
+  ],
+
+  creator: "IdleTrend",
+  publisher: "IdleTrend",
+
   alternates: {
     canonical: "/",
+  },
+
+  icons: {
+    icon: [
+      {
+        url: "/icon.png",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/icon.png",
+    apple: "/icon.png",
   },
 
   openGraph: {
@@ -35,17 +71,26 @@ export const metadata: Metadata = {
     url: "https://idletrend.com",
     siteName: "IdleTrend",
     title:
-      "IdleTrend – Taskbar Hero Steam Market Prices & Trends",
+      "IdleTrend – Taskbar Hero Steam Market Takibi",
     description:
-      "Track Taskbar Hero item prices, listings, price history, gainers, losers, and Steam Market trends.",
+      "Taskbar Hero item fiyatlarını, ilan sayılarını ve piyasa hareketlerini takip edin.",
+    images: [
+      {
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+        alt: "IdleTrend logo",
+      },
+    ],
   },
 
   twitter: {
     card: "summary",
     title:
-      "IdleTrend – Taskbar Hero Steam Market Prices & Trends",
+      "IdleTrend – Taskbar Hero Steam Market Takibi",
     description:
-      "Track TBH Steam Market prices, listings, and item trends.",
+      "Taskbar Hero Steam Market fiyat ve ilan takip platformu.",
+    images: ["/icon.png"],
   },
 
   robots: {
@@ -61,7 +106,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="tr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
