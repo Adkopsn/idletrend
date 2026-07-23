@@ -164,22 +164,7 @@ const where =
         AND: filters,
       }
     : {};
-    const items = await prisma.item.findMany({
-  where,
-  include: {
-    records: {
-      orderBy: {
-        snapshot: {
-          fetchedAt: "desc",
-        },
-      },
-      take: 1,
-      include: {
-        snapshot: true,
-      },
-    },
-  },
-});
+    
     const items = await prisma.item.findMany({
   where,
   include: {
@@ -549,6 +534,101 @@ app.get("/api/accumulating", async (req, res) => {
 
     res.status(500).json({
       error: "Toplanan itemler alınamadı.",
+    });
+  }
+});
+app.get("/api/watchlist", async (req, res) => {
+  try {
+    const rawIds =
+      typeof req.query.ids === "string"
+        ? req.query.ids
+        : "";
+
+    const ids = [
+      ...new Set(
+        rawIds
+          .split(",")
+          .map((value) => Number(value.trim()))
+          .filter(
+            (id) =>
+              Number.isInteger(id) &&
+              id > 0
+          )
+      ),
+    ].slice(0, 100);
+
+    if (ids.length === 0) {
+      return res.json({
+        items: [],
+        totalItems: 0,
+      });
+    }
+
+    const items = await prisma.item.findMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+      include: {
+        records: {
+          orderBy: {
+            snapshot: {
+              fetchedAt: "desc",
+            },
+          },
+          take: 1,
+          include: {
+            snapshot: true,
+          },
+        },
+      },
+    });
+
+    const result = items
+      .map((item) => {
+        const latestRecord =
+          item.records[0] ?? null;
+
+        return {
+          id: item.id,
+          hashName: item.hashName,
+          name: item.name,
+          type: item.type,
+          classId: item.classId,
+          iconUrl: item.iconUrl,
+          nameColor: item.nameColor,
+          tradable: item.tradable,
+          latestPriceCents:
+            latestRecord?.priceCents ?? null,
+          latestPriceText:
+            latestRecord?.priceText ?? null,
+          latestListings:
+            latestRecord?.listings ?? null,
+          latestFetchedAt:
+            latestRecord?.snapshot
+              ?.fetchedAt ?? null,
+        };
+      })
+      .sort(
+        (a, b) =>
+          ids.indexOf(a.id) -
+          ids.indexOf(b.id)
+      );
+
+    res.json({
+      items: result,
+      totalItems: result.length,
+    });
+  } catch (error) {
+    console.error(
+      "Watchlist itemleri alınamadı:",
+      error
+    );
+
+    res.status(500).json({
+      error:
+        "Takip listesindeki itemler alınamadı.",
     });
   }
 });
