@@ -63,6 +63,7 @@ function ChartTooltip({
   }
 
   const text = translations[language];
+
   const locale =
     language === "tr" ? "tr-TR" : "en-US";
 
@@ -114,7 +115,12 @@ export default function ItemDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [favoriteIds, setFavoriteIds] = useState<
+    number[]
+  >([]);
+
   const text = translations[language];
+
   const locale =
     language === "tr" ? "tr-TR" : "en-US";
 
@@ -129,8 +135,10 @@ export default function ItemDetailPage() {
       savedLanguage === "en"
     ) {
       setLanguage(savedLanguage);
+
       document.documentElement.lang =
         savedLanguage;
+
       return;
     }
 
@@ -143,8 +151,40 @@ export default function ItemDetailPage() {
         : "en";
 
     setLanguage(initialLanguage);
+
     document.documentElement.lang =
       initialLanguage;
+  }, []);
+
+  useEffect(() => {
+    const savedFavorites =
+      window.localStorage.getItem(
+        "idletrend-favorites"
+      );
+
+    if (!savedFavorites) {
+      return;
+    }
+
+    try {
+      const parsedFavorites =
+        JSON.parse(savedFavorites);
+
+      if (Array.isArray(parsedFavorites)) {
+        setFavoriteIds(
+          parsedFavorites.filter(
+            (favoriteId): favoriteId is number =>
+              Number.isInteger(favoriteId) &&
+              favoriteId > 0
+          )
+        );
+      }
+    } catch (favoritesError) {
+      console.error(
+        "Favoriler okunamadı:",
+        favoritesError
+      );
+    }
   }, []);
 
   function changeLanguage(
@@ -161,11 +201,34 @@ export default function ItemDetailPage() {
       newLanguage;
   }
 
+  function toggleFavorite(itemId: number) {
+    setFavoriteIds((currentFavorites) => {
+      const nextFavorites =
+        currentFavorites.includes(itemId)
+          ? currentFavorites.filter(
+              (favoriteId) =>
+                favoriteId !== itemId
+            )
+          : [...currentFavorites, itemId];
+
+      window.localStorage.setItem(
+        "idletrend-favorites",
+        JSON.stringify(nextFavorites)
+      );
+
+      return nextFavorites;
+    });
+  }
+
   useEffect(() => {
+    const controller = new AbortController();
+
     setLoading(true);
     setError("");
 
-    fetch(`${API_URL}/api/items/${id}`)
+    fetch(`${API_URL}/api/items/${id}`, {
+      signal: controller.signal,
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error(
@@ -177,17 +240,26 @@ export default function ItemDetailPage() {
       })
       .then((data) => {
         setItem(data);
-        setLoading(false);
       })
       .catch((fetchError) => {
+        if (fetchError.name === "AbortError") {
+          return;
+        }
+
         console.error(
           "Item details error:",
           fetchError
         );
 
         setError("item-load-error");
-        setLoading(false);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
+
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {
@@ -230,6 +302,9 @@ export default function ItemDetailPage() {
     );
   }
 
+  const isFavorite =
+    favoriteIds.includes(item.id);
+
   const latest = item.history[0] ?? null;
   const previous = item.history[1] ?? null;
 
@@ -257,6 +332,7 @@ export default function ItemDetailPage() {
         hour: "2-digit",
         minute: "2-digit",
       }),
+
       price: record.priceCents / 100,
       listings: record.listings,
     }));
@@ -292,15 +368,64 @@ export default function ItemDetailPage() {
               )}
             </div>
 
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold sm:text-3xl">
-                {item.name}
-              </h1>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-bold sm:text-3xl">
+                    {item.name}
+                  </h1>
 
-              <p className="mt-2 text-zinc-400">
-                {item.type ??
-                  text.noTypeInformation}
-              </p>
+                  <p className="mt-2 text-zinc-400">
+                    {item.type ??
+                      text.noTypeInformation}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleFavorite(item.id)
+                  }
+                  aria-pressed={isFavorite}
+                  aria-label={
+                    isFavorite
+                      ? language === "tr"
+                        ? `${item.name} takip listesinden çıkar`
+                        : `Remove ${item.name} from watchlist`
+                      : language === "tr"
+                        ? `${item.name} takip listesine ekle`
+                        : `Add ${item.name} to watchlist`
+                  }
+                  title={
+                    isFavorite
+                      ? language === "tr"
+                        ? "Takip listesinden çıkar"
+                        : "Remove from watchlist"
+                      : language === "tr"
+                        ? "Takip listesine ekle"
+                        : "Add to watchlist"
+                  }
+                  className={`flex shrink-0 items-center justify-center gap-2 rounded-xl border px-4 py-3 font-semibold transition ${
+                    isFavorite
+                      ? "border-yellow-500 bg-yellow-500/10 text-yellow-300"
+                      : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-yellow-500 hover:text-yellow-300"
+                  }`}
+                >
+                  <span className="text-xl">
+                    {isFavorite ? "★" : "☆"}
+                  </span>
+
+                  <span>
+                    {isFavorite
+                      ? language === "tr"
+                        ? "Takip ediliyor"
+                        : "Watching"
+                      : language === "tr"
+                        ? "Takip et"
+                        : "Watch"}
+                  </span>
+                </button>
+              </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
@@ -344,6 +469,7 @@ export default function ItemDetailPage() {
                     {priceChangePercent > 0
                       ? "+"
                       : ""}
+
                     {priceChangePercent.toFixed(
                       1
                     )}
@@ -539,8 +665,7 @@ export default function ItemDetailPage() {
 
                     const change =
                       olderRecord &&
-                      olderRecord.priceCents >
-                        0
+                      olderRecord.priceCents > 0
                         ? ((record.priceCents -
                             olderRecord.priceCents) /
                             olderRecord.priceCents) *
